@@ -4,7 +4,6 @@ import { User } from "backend/model/user";
 import { NextRequest, NextResponse } from "next/server";
 import { generateOtp } from "backend/utils/otpGenerator";
 import { emailQueue } from "backend/queue/email/email.worker";
-import { sendOtpEmail, sendWelcomeEmail } from "backend/utils/emailService";
 
 //register new user: /api/auth/register
 export const registerUser = catchAsyncErrors(
@@ -35,9 +34,6 @@ export const registerUser = catchAsyncErrors(
       // Queue jobs instead of awaiting
       await emailQueue.add('welcome', { email, name })
       await emailQueue.add('otp', { email, name, otpCode })
-
-      // await sendWelcomeEmail(email, name)
-      // await sendOtpEmail(email, name, otpCode)
 
       return NextResponse.json(
         {success: true, message: "User registered successfully"}, 
@@ -142,5 +138,26 @@ export const updateUserProfile = catchAsyncErrors(
       {success: true, message: "User updated successfully"},
       {status: 200}
     ) 
+  }
+)
+
+//find user by session id: /api/auth/session/:sessionId
+export const getUserBySessionId = catchAsyncErrors(
+  async (
+    req: NextRequest,
+     { params }: { params: { sessionId: string } }
+  ) => {
+    const { sessionId } = params
+    const user = await User.findOne({ sessionId }).select('-password')
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "User not found" },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json(
+      { success: true, user },
+      { status: 200 }
+    )
   }
 )
